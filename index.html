@@ -175,6 +175,13 @@ const TOOLS = [
          wood_door:11,metal_door:3.97,armored_door:3.19,garage_door:4.0,ladder_hatch:3.97,auto_turret:10,metal_barric:3.64} },
 ];
 
+const MATERIAL_COSTS = {
+  c4:      { metal_fragments: 200, low_grade_fuel: 60, cloth: 5, tech_trash: 2 },
+  rocket:  { metal_fragments: 100, low_grade_fuel: 30, metal_pipe: 2 },
+  satchel: { metal_fragments: 80, cloth: 4, rope: 1, beancan_grenade: 4 },
+  expammo: { metal_fragments: 5, gunpowder: 10 },
+};
+
 function fmt(n) { return Math.round(n).toLocaleString(); }
 
 function findOptimal(sid, totalHp) {
@@ -236,6 +243,34 @@ function summarizeTools(counts) {
     .map(t => ({ name: t.name, qty: counts[t.id] || 0 }))
     .filter(x => x.qty > 0)
     .map(x => `${x.qty}× ${x.name}`);
+}
+
+function aggregateMaterials(counts) {
+  const totals = {};
+  Object.entries(counts).forEach(([toolId, qty]) => {
+    const mats = MATERIAL_COSTS[toolId];
+    if (!mats || qty <= 0) return;
+    Object.entries(mats).forEach(([mat, amount]) => {
+      totals[mat] = (totals[mat] || 0) + amount * qty;
+    });
+  });
+  return totals;
+}
+
+function summarizeMaterials(materials) {
+  const labels = {
+    metal_fragments: 'Metal frags',
+    low_grade_fuel: 'Low grade',
+    cloth: 'Cloth',
+    tech_trash: 'Tech trash',
+    metal_pipe: 'Pipes',
+    rope: 'Rope',
+    beancan_grenade: 'Bean cans',
+    gunpowder: 'Gunpowder',
+  };
+  return Object.entries(labels)
+    .filter(([id]) => (materials[id] || 0) > 0)
+    .map(([id, name]) => `${fmt(materials[id])} ${name}`);
 }
 
 let raidList = [];
@@ -337,6 +372,8 @@ function renderResults() {
   const isSame = totalOptimal === totalSatchel;
   const optimalSummary = summarizeTools(optimalCounts);
   const satchelSummary = summarizeTools(satchelCounts);
+  const optimalMats = summarizeMaterials(aggregateMaterials(optimalCounts));
+  const satchelMats = summarizeMaterials(aggregateMaterials(satchelCounts));
 
   wrap.innerHTML = `
     <div class="panel">
@@ -345,6 +382,10 @@ function renderResults() {
         <div class="stat"><div class="stat-label">Optimal sulfur</div><div class="stat-val acc">${fmt(totalOptimal)}</div></div>
         <div class="stat"><div class="stat-label">Satchels only</div><div class="stat-val">${fmt(totalSatchel)}</div></div>
         <div class="stat"><div class="stat-label">Saved vs satchels</div><div class="stat-val" style="color:var(--green)">${fmt(saved)}</div></div>
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text2);">
+        <div><span style="color:var(--text3)">Optimal extra mats:</span> ${optimalMats.join(' · ') || '—'}</div>
+        ${!isSame ? `<div style="margin-top:6px;"><span style="color:var(--text3)">Satchels extra mats:</span> ${satchelMats.join(' · ') || '—'}</div>` : ''}
       </div>
     </div>
     <div class="panel" style="margin-top:1rem;">
