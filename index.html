@@ -437,26 +437,11 @@ function renderResults() {
   const optimalSummary = summarizeTools(optimalCounts);
   const satchelSummary = summarizeTools(satchelCounts);
   const optimalMatTotals = aggregateMaterials(optimalCounts);
-  const satchelMatTotals = aggregateMaterials(satchelCounts);
-  const optimalMats = summarizeMaterials(optimalMatTotals);
-  const satchelMats = summarizeMaterials(satchelMatTotals);
   const optimalComponents = summarizeComponents(optimalMatTotals);
   const mining = aggregateResourceNeeds(optimalCounts);
 
   wrap.innerHTML = `
     <div class="panel">
-      <div class="panel-title">// totals</div>
-      <div class="summary-grid">
-        <div class="stat"><div class="stat-label">Optimal sulfur</div><div class="stat-val acc">${fmt(totalOptimal)}</div></div>
-        <div class="stat"><div class="stat-label">Satchels only</div><div class="stat-val">${fmt(totalSatchel)}</div></div>
-        <div class="stat"><div class="stat-label">Saved vs satchels</div><div class="stat-val" style="color:var(--green)">${fmt(saved)}</div></div>
-      </div>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text2);">
-        <div><span style="color:var(--text3)">Optimal extra mats:</span> ${optimalMats.join(' · ') || '—'}</div>
-        ${!isSame ? `<div style="margin-top:6px;"><span style="color:var(--text3)">Satchels extra mats:</span> ${satchelMats.join(' · ') || '—'}</div>` : ''}
-      </div>
-    </div>
-    <div class="panel" style="margin-top:1rem;">
       <div class="panel-title">// whole list comparison</div>
       <div class="struct-section">
         <div class="ss-title">Entire raid list<span> · all structures combined</span></div>
@@ -484,11 +469,11 @@ function renderResults() {
       <div class="panel-title">// mining estimate</div>
       <div style="font-family:var(--mono);font-size:12px;color:var(--text2);line-height:1.7;">
         <div style="margin-bottom:8px;color:var(--text3);">Estimated raw resources for optimal plan</div>
-        <div>Sulfur: <span style="color:var(--accent2)">${fmt(mining.sulfur)}</span> (~${fmt(mining.sulfur_nodes)} nodes)</div>
-        <div>Metal ore: <span style="color:var(--accent2)">${fmt(mining.metal_ore)}</span> (~${fmt(mining.metal_nodes)} nodes)</div>
-        <div>Stone: <span style="color:var(--accent2)">${fmt(mining.stone)}</span> (~${fmt(mining.stone_nodes)} nodes)</div>
-        <div>Charcoal total: <span style="color:var(--accent2)">${fmt(mining.charcoal)}</span></div>
-        <div>Wood for charcoal: <span style="color:var(--accent2)">${fmt(mining.wood_for_charcoal)}</span> (~${fmt(mining.wood_nodes)} wood nodes)</div>
+        <div><span style="font-size:14px;color:var(--text)">Sulfur:</span> <span style="color:var(--accent2)">${fmt(mining.sulfur)}</span> (~${fmt(mining.sulfur_nodes)} nodes)</div>
+        <div><span style="font-size:14px;color:var(--text)">Metal ore:</span> <span style="color:var(--accent2)">${fmt(mining.metal_ore)}</span> (~${fmt(mining.metal_nodes)} nodes)</div>
+        <div><span style="font-size:14px;color:var(--text)">Stone:</span> <span style="color:var(--accent2)">${fmt(mining.stone)}</span> (~${fmt(mining.stone_nodes)} nodes)</div>
+        <div><span style="font-size:14px;color:var(--text)">Charcoal total:</span> <span style="color:var(--accent2)">${fmt(mining.charcoal)}</span></div>
+        <div><span style="font-size:14px;color:var(--text)">Wood for charcoal:</span> <span style="color:var(--accent2)">${fmt(mining.wood_for_charcoal)}</span> (~${fmt(mining.wood_nodes)} wood nodes)</div>
         <div style="margin-top:8px;"><span style="color:var(--text3)">Components:</span> ${optimalComponents.join(' · ') || '—'}</div>
       </div>
     </div>
