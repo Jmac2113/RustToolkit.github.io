@@ -173,6 +173,33 @@
         <div class="panel-title">// kit items</div>
         <div id="kitList"></div>
       </div>
+      <div>
+        <div class="panel" style="margin-bottom:1rem;">
+          <div class="panel-title">// kit setup</div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--text2);">
+            <div style="margin-bottom:8px;">Number of kits</div>
+            <input id="kitCountInput" class="kit-qty" type="number" min="1" value="1" />
+          </div>
+        </div>
+        <div class="panel" style="margin-bottom:1rem;">
+          <div class="panel-title">// kit totals</div>
+          <div id="kitSummary" class="empty-list">No kit items selected yet</div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">// resource cost</div>
+          <div id="kitResourceSummary" class="empty-list">No resource cost yet</div>
+        </div>
+        <div id="resultsWrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content hidden" id="kitTabContent">
+    <div class="kit-layout">
+      <div class="panel">
+        <div class="panel-title">// kit items</div>
+        <div id="kitList"></div>
+      </div>
       <div class="panel">
         <div class="panel-title">// kit totals</div>
         <div id="kitSummary" class="empty-list">No kit items selected yet</div>
@@ -264,6 +291,44 @@ const KIT_ITEMS = {
     'Cooked Wolf Meat','Cooked Bear Meat','Cooked Deer Meat','Cooked Pork','Cooked Chicken','Fish',
     'Chocolate Bar','Granola Bar','Apple','Pumpkin','Corn','Mushroom','Can of Beans','Tuna Can','Water Bottle'
   ]
+};
+
+const KIT_RECIPES = {
+  'Assault Rifle': { hq_metal: 50, metal_fragments: 200, wood: 50 },
+  'Bolt Action Rifle': { hq_metal: 20, metal_fragments: 100, wood: 50 },
+  'Semi-Automatic Rifle': { hq_metal: 4, metal_fragments: 450, wood: 1 },
+  'Thompson': { hq_metal: 10, metal_fragments: 200, wood: 100 },
+  'Custom SMG': { metal_fragments: 100, wood: 50 },
+  'Pump Shotgun': { hq_metal: 15, metal_fragments: 200, wood: 50 },
+  'Rocket Launcher': { hq_metal: 50, metal_fragments: 200, pipes: 2 },
+  '5.56 Rifle Ammo': { gunpowder: 10, metal_fragments: 2 },
+  'Explosive 5.56 Rifle Ammo': { gunpowder: 10, metal_fragments: 5, sulfur: 5 },
+  'Pistol Bullet': { gunpowder: 5, metal_fragments: 5 },
+  'Rocket': { gunpowder: 150, sulfur: 100, metal_fragments: 100, low_grade_fuel: 30, explosives: 10, pipes: 2 },
+  'Timed Explosive Charge': { explosives: 20, cloth: 5, tech_trash: 2 },
+  'Satchel Charge': { beancan_grenade: 4, small_stash: 1, rope: 1 },
+  'Metal Facemask': { hq_metal: 15, sewing_kit: 1 },
+  'Metal Chest Plate': { hq_metal: 8, metal_fragments: 50, sewing_kit: 1 },
+  'Coffee Can Helmet': { metal_fragments: 75, cloth: 15 },
+  'Road Sign Kilt': { road_sign: 2, metal_fragments: 20, sewing_kit: 1 },
+  'Road Sign Jacket': { road_sign: 4, metal_fragments: 60, sewing_kit: 1 },
+  'Hoodie': { cloth: 30, sewing_kit: 1 },
+  'Pants': { cloth: 20, sewing_kit: 1 },
+  'Jacket': { cloth: 25, sewing_kit: 1 },
+  'Gloves': { cloth: 20, sewing_kit: 1 },
+  'Boots': { leather: 10, sewing_kit: 1 },
+  'Bandana Mask': { cloth: 5 },
+  'Wolf Headdress': { wolf_skull: 1, cloth: 15 },
+  'Hazmat Suit': { hq_metal: 2, cloth: 60, tarp: 5, sewing_kit: 8 },
+  'Hatchet': { wood: 200, metal_fragments: 100 },
+  'Pickaxe': { wood: 200, metal_fragments: 125 },
+  'Jackhammer': { hq_metal: 20, metal_fragments: 100 },
+  'Chainsaw': { hq_metal: 5, metal_fragments: 75, gears: 1 },
+  'Cooked Wolf Meat': { wolf_meat_raw: 1, wood: 10 },
+  'Cooked Bear Meat': { bear_meat_raw: 1, wood: 10 },
+  'Cooked Deer Meat': { venison_raw: 1, wood: 10 },
+  'Cooked Pork': { pork_raw: 1, wood: 10 },
+  'Cooked Chicken': { chicken_raw: 1, wood: 10 },
 };
 
 function fmt(n) { return Math.round(n).toLocaleString(); }
@@ -405,6 +470,7 @@ function aggregateResourceNeeds(counts) {
 let raidList = [];
 let uid = 0;
 let kitState = {};
+let kitCount = 1;
 
 function addStructure(sid) {
   const existing = raidList.find(x => x.sid === sid);
@@ -579,17 +645,32 @@ function renderKitPlanner() {
 
 function renderKitSummary() {
   const summary = document.getElementById('kitSummary');
+  const resourceSummary = document.getElementById('kitResourceSummary');
   const entries = Object.entries(kitState).filter(([, qty]) => qty > 0);
   if (!entries.length) {
     summary.innerHTML = 'No kit items selected yet';
+    resourceSummary.innerHTML = 'No resource cost yet';
     return;
   }
 
-  const totalItems = entries.reduce((sum, [, qty]) => sum + qty, 0);
+  const totalItems = entries.reduce((sum, [, qty]) => sum + qty, 0) * kitCount;
   const byGroup = {};
+  const resources = {};
+  let missingRecipes = 0;
+
   entries.forEach(([key, qty]) => {
-    const group = key.split('::')[0];
-    byGroup[group] = (byGroup[group] || 0) + qty;
+    const [group, item] = key.split('::');
+    const itemTotal = qty * kitCount;
+    byGroup[group] = (byGroup[group] || 0) + itemTotal;
+
+    const recipe = KIT_RECIPES[item];
+    if (!recipe) {
+      missingRecipes++;
+      return;
+    }
+    Object.entries(recipe).forEach(([mat, amt]) => {
+      resources[mat] = (resources[mat] || 0) + (amt * itemTotal);
+    });
   });
 
   summary.innerHTML = `
@@ -597,6 +678,26 @@ function renderKitSummary() {
       <div class="stat"><div class="stat-label">Total items</div><div class="stat-val acc">${fmt(totalItems)}</div></div>
       ${Object.entries(byGroup).map(([g, n]) => `<div class="stat"><div class="stat-label">${g}</div><div class="stat-val">${fmt(n)}</div></div>`).join('')}
     </div>
+  `;
+
+  const niceNames = {
+    wood:'Wood', stone:'Stone', sulfur:'Sulfur', metal_fragments:'Metal fragments', hq_metal:'HQ metal', cloth:'Cloth', leather:'Leather',
+    low_grade_fuel:'Low grade', gunpowder:'Gunpowder', explosives:'Explosives', pipes:'Pipes', gears:'Gears', tech_trash:'Tech trash',
+    sewing_kit:'Sewing kits', road_sign:'Road signs', tarp:'Tarp', rope:'Rope', beancan_grenade:'Beancan grenades', small_stash:'Small stash',
+    wolf_skull:'Wolf skull', wolf_meat_raw:'Raw wolf meat', bear_meat_raw:'Raw bear meat', venison_raw:'Raw venison', pork_raw:'Raw pork', chicken_raw:'Raw chicken'
+  };
+
+  const resLines = Object.entries(resources)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([k, v]) => `<div class="kit-row"><label>${niceNames[k] || k}</label><span>${fmt(v)}</span></div>`)
+    .join('');
+
+  resourceSummary.innerHTML = `
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:8px;">
+      Total for ${fmt(kitCount)} kit${kitCount === 1 ? '' : 's'}
+    </div>
+    ${resLines || '<div class="empty-list" style="padding:0;">No matching recipes yet</div>'}
+    ${missingRecipes ? `<div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text3);">${fmt(missingRecipes)} selected items do not have recipe data yet.</div>` : ''}
   `;
 }
 
@@ -616,6 +717,13 @@ function setupTabs() {
 
   raidBtn.addEventListener('click', () => setTab('raid'));
   kitBtn.addEventListener('click', () => setTab('kit'));
+
+  const kitCountInput = document.getElementById('kitCountInput');
+  kitCountInput.addEventListener('change', e => {
+    kitCount = Math.max(1, parseInt(e.target.value) || 1);
+    e.target.value = kitCount;
+    renderKitSummary();
+  });
 }
 
 renderStructList();
