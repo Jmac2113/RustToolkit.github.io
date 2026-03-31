@@ -190,8 +190,8 @@ const RESOURCE_COSTS = {
 };
 
 const NODE_YIELDS = {
-  sulfur: 1000,
-  metal_ore: 1000,
+  sulfur: 300,
+  metal_ore: 600,
   stone: 1000,
   wood: 1000,
 };
@@ -300,6 +300,19 @@ function summarizeMaterials(materials) {
     gunpowder: 'Gunpowder',
   };
   return Object.entries(labels)
+    .filter(([id]) => (materials[id] || 0) > 0)
+    .map(([id, name]) => `${fmt(materials[id])} ${name}`);
+}
+
+function summarizeComponents(materials) {
+  const components = [
+    ['tech_trash', 'Tech trash'],
+    ['metal_pipe', 'Pipes'],
+    ['rope', 'Rope'],
+    ['beancan_grenade', 'Bean cans'],
+    ['cloth', 'Cloth'],
+  ];
+  return components
     .filter(([id]) => (materials[id] || 0) > 0)
     .map(([id, name]) => `${fmt(materials[id])} ${name}`);
 }
@@ -424,8 +437,11 @@ function renderResults() {
   const isSame = totalOptimal === totalSatchel;
   const optimalSummary = summarizeTools(optimalCounts);
   const satchelSummary = summarizeTools(satchelCounts);
-  const optimalMats = summarizeMaterials(aggregateMaterials(optimalCounts));
-  const satchelMats = summarizeMaterials(aggregateMaterials(satchelCounts));
+  const optimalMatTotals = aggregateMaterials(optimalCounts);
+  const satchelMatTotals = aggregateMaterials(satchelCounts);
+  const optimalMats = summarizeMaterials(optimalMatTotals);
+  const satchelMats = summarizeMaterials(satchelMatTotals);
+  const optimalComponents = summarizeComponents(optimalMatTotals);
   const mining = aggregateResourceNeeds(optimalCounts);
 
   wrap.innerHTML = `
@@ -474,6 +490,7 @@ function renderResults() {
         <div>Stone: <span style="color:var(--accent2)">${fmt(mining.stone)}</span> (~${fmt(mining.stone_nodes)} nodes)</div>
         <div>Charcoal total: <span style="color:var(--accent2)">${fmt(mining.charcoal)}</span></div>
         <div>Wood for charcoal: <span style="color:var(--accent2)">${fmt(mining.wood_for_charcoal)}</span> (~${fmt(mining.wood_nodes)} wood nodes)</div>
+        <div style="margin-top:8px;"><span style="color:var(--text3)">Components:</span> ${optimalComponents.join(' · ') || '—'}</div>
       </div>
     </div>
   `;
