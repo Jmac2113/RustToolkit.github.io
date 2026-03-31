@@ -413,22 +413,21 @@ function renderResults() {
   const satchelCounts = {};
 
   raidList.forEach(item => {
-    const totalHp = item.hp * item.qty;
-    const optimal = findOptimal(item.sid, totalHp);
-    const satchOnly = findSatchelOnly(item.sid, totalHp);
+    const optimal = findOptimal(item.sid, item.hp);
+    const satchOnly = findSatchelOnly(item.sid, item.hp);
     if (optimal) {
-      totalOptimal += optimal.sulfur;
+      totalOptimal += optimal.sulfur * item.qty;
       if (optimal.primary && optimal.np > 0) {
-        optimalCounts[optimal.primary.id] = (optimalCounts[optimal.primary.id] || 0) + optimal.np;
+        optimalCounts[optimal.primary.id] = (optimalCounts[optimal.primary.id] || 0) + (optimal.np * item.qty);
       }
       if (optimal.secondary && optimal.ns > 0) {
-        optimalCounts[optimal.secondary.id] = (optimalCounts[optimal.secondary.id] || 0) + optimal.ns;
+        optimalCounts[optimal.secondary.id] = (optimalCounts[optimal.secondary.id] || 0) + (optimal.ns * item.qty);
       }
     }
     if (satchOnly) {
-      totalSatchel += satchOnly.sulfur;
+      totalSatchel += satchOnly.sulfur * item.qty;
       if (satchOnly.secondary && satchOnly.ns > 0) {
-        satchelCounts[satchOnly.secondary.id] = (satchelCounts[satchOnly.secondary.id] || 0) + satchOnly.ns;
+        satchelCounts[satchOnly.secondary.id] = (satchelCounts[satchOnly.secondary.id] || 0) + (satchOnly.ns * item.qty);
       }
     }
   });
