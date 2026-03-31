@@ -231,6 +231,17 @@ function comboSub(c) {
   return parts.join(' + ');
 }
 
+function summarizeTools(counts) {
+  return TOOLS
+    .map(t => ({ name: t.name, qty: counts[t.id] || 0 }))
+    .filter(x => x.qty > 0)
+    .map(x => `${x.qty}× ${x.name}`);
+}
+
+function totalItems(counts) {
+  return Object.values(counts).reduce((sum, n) => sum + n, 0);
+}
+
 let raidList = [];
 let uid = 0;
 
@@ -302,17 +313,34 @@ function renderResults() {
 
   let totalOptimal = 0;
   let totalSatchel = 0;
+  const optimalCounts = {};
+  const satchelCounts = {};
 
   raidList.forEach(item => {
     const totalHp = item.hp * item.qty;
     const optimal = findOptimal(item.sid, totalHp);
     const satchOnly = findSatchelOnly(item.sid, totalHp);
-    if (optimal) totalOptimal += optimal.sulfur;
-    if (satchOnly) totalSatchel += satchOnly.sulfur;
+    if (optimal) {
+      totalOptimal += optimal.sulfur;
+      if (optimal.primary && optimal.np > 0) {
+        optimalCounts[optimal.primary.id] = (optimalCounts[optimal.primary.id] || 0) + optimal.np;
+      }
+      if (optimal.secondary && optimal.ns > 0) {
+        optimalCounts[optimal.secondary.id] = (optimalCounts[optimal.secondary.id] || 0) + optimal.ns;
+      }
+    }
+    if (satchOnly) {
+      totalSatchel += satchOnly.sulfur;
+      if (satchOnly.secondary && satchOnly.ns > 0) {
+        satchelCounts[satchOnly.secondary.id] = (satchelCounts[satchOnly.secondary.id] || 0) + satchOnly.ns;
+      }
+    }
   });
 
   const saved = totalSatchel - totalOptimal;
   const isSame = totalOptimal === totalSatchel;
+  const optimalSummary = summarizeTools(optimalCounts);
+  const satchelSummary = summarizeTools(satchelCounts);
 
   wrap.innerHTML = `
     <div class="panel">
@@ -328,23 +356,23 @@ function renderResults() {
       <div class="struct-section">
         <div class="ss-title">Entire raid list<span> · all structures combined</span></div>
         <div class="results-panel">
-          <div class="res-header"><div>Combination</div><div>Sulfur</div><div>Note</div></div>
+          <div class="res-header"><div>Explosives</div><div>Amount</div><div>Note</div></div>
           <div class="result-row best">
             <div>
-              <div class="combo-name hl">Per-structure optimal totals<span class="badge opt">optimal</span></div>
-              <div class="combo-sub">Best combination selected for each structure, then summed</div>
+              <div class="combo-name hl">${optimalSummary.join(' + ') || '—'}<span class="badge opt">optimal</span></div>
+              <div class="combo-sub">Summed explosive counts from each structure's best combo</div>
             </div>
-            <div class="sval hl">${fmt(totalOptimal)}</div>
-            <div style="font-family:var(--mono);font-size:11px;color:var(--accent)">cheapest</div>
+            <div class="sval hl">${fmt(totalItems(optimalCounts))}</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--accent)">fewest sulfur</div>
           </div>
           ${!isSame ? `
           <div class="result-row satch">
             <div>
-              <div class="combo-name">Satchels only<span class="badge sat">satchels</span></div>
-              <div class="combo-sub">Satchels used across the entire raid list</div>
+              <div class="combo-name">${satchelSummary.join(' + ') || '—'}<span class="badge sat">satchels</span></div>
+              <div class="combo-sub">Satchel count for the same full raid list</div>
             </div>
-            <div class="sval shl">${fmt(totalSatchel)}</div>
-            <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">+${fmt(saved)}</div>
+            <div class="sval shl">${fmt(totalItems(satchelCounts))}</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">+${fmt(saved)} sulfur</div>
           </div>` : ''}
         </div>
       </div>
