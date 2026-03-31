@@ -182,6 +182,10 @@ const MATERIAL_COSTS = {
   expammo: { metal_fragments: 5, gunpowder: 10 },
 };
 
+const EXP_AMMO_CLEANUP_HP_LIMIT = 180;
+const EXP_AMMO_CLEANUP_COUNT_LIMIT = 40;
+const EXP_AMMO_SOFT_PENALTY = 15;
+
 function fmt(n) { return Math.round(n).toLocaleString(); }
 
 function findOptimal(sid, totalHp) {
@@ -198,7 +202,10 @@ function findOptimal(sid, totalHp) {
       if (rem < 0) break;
       if (rem === 0) {
         const s = np * primary.sulfur;
-        if (!best || s < best.sulfur) best = { np, primary, ns:0, secondary:null, sulfur:s };
+        const score = s;
+        if (!best || score < best.score || (score === best.score && s < best.sulfur)) {
+          best = { np, primary, ns:0, secondary:null, sulfur:s, score };
+        }
         continue;
       }
       all.forEach(secondary => {
@@ -207,7 +214,15 @@ function findOptimal(sid, totalHp) {
         if (!dsS) return;
         const ns = Math.ceil(rem / dsS);
         const s = np * primary.sulfur + ns * secondary.sulfur;
-        if (!best || s < best.sulfur) best = { np, primary, ns, secondary, sulfur:s };
+        if (secondary.id === 'expammo') {
+          if (np === 0) return;
+          if (rem > EXP_AMMO_CLEANUP_HP_LIMIT) return;
+          if (ns > EXP_AMMO_CLEANUP_COUNT_LIMIT) return;
+        }
+        const score = s + (secondary.id === 'expammo' ? ns * EXP_AMMO_SOFT_PENALTY : 0);
+        if (!best || score < best.score || (score === best.score && s < best.sulfur)) {
+          best = { np, primary, ns, secondary, sulfur:s, score };
+        }
       });
     }
   });
