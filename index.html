@@ -565,162 +565,22 @@ function renderAll() {
   renderResults();
 }
 
-function renderKitPlanner() {
-  const list = document.getElementById('kitList');
-  const tabs = document.getElementById('kitCategoryTabs');
-  list.innerHTML = '';
-  tabs.innerHTML = '';
-
-  Object.keys(KIT_ITEMS).forEach(group => {
-    const btn = document.createElement('button');
-    btn.className = `tab-btn subtab-btn ${group === activeKitCategory ? 'active' : ''}`;
-    btn.textContent = group;
-    btn.addEventListener('click', () => {
-      activeKitCategory = group;
-      renderKitPlanner();
-    });
-    tabs.appendChild(btn);
+function removeLegacyKitPlannerUI() {
+  const legacyIds = ['tabKit', 'tabRaid', 'kitTabContent', 'kitCategoryTabs', 'kitList', 'kitSummary', 'kitResourceSummary'];
+  legacyIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
   });
 
-  const wrap = document.createElement('div');
-  wrap.className = 'kit-group';
-  wrap.innerHTML = `<div class="kit-title">${activeKitCategory}</div>`;
-  KIT_ITEMS[activeKitCategory].forEach(name => {
-    const key = `${activeKitCategory}::${name}`;
-    if (kitState[key] === undefined) kitState[key] = 0;
-    const row = document.createElement('div');
-    row.className = 'kit-row';
-    row.innerHTML = `<label>${name}</label><input class="kit-qty" type="number" min="0" value="${kitState[key]}" data-key="${key}" />`;
-    wrap.appendChild(row);
+  document.querySelectorAll('button').forEach(btn => {
+    if (btn.textContent.trim().toLowerCase() === 'kit planner') btn.remove();
   });
-  list.appendChild(wrap);
 
-  list.querySelectorAll('.kit-qty').forEach(inp => {
-    inp.addEventListener('change', e => {
-      kitState[e.target.dataset.key] = Math.max(0, parseInt(e.target.value) || 0);
-      renderKitSummary();
-    });
-  });
-  renderKitSummary();
+  const tabBar = document.querySelector('.tabs');
+  if (tabBar) tabBar.remove();
 }
 
-function renderKitSummary() {
-  const summary = document.getElementById('kitSummary');
-  const resourceSummary = document.getElementById('kitResourceSummary');
-  const entries = Object.entries(kitState).filter(([, qty]) => qty > 0);
-  if (!entries.length) {
-    summary.innerHTML = 'No kit items selected yet';
-    resourceSummary.innerHTML = 'No resource cost yet';
-    return;
-  }
-
-  const totalItems = entries.reduce((sum, [, qty]) => sum + qty, 0) * kitCount;
-  const byGroup = {};
-  const resources = {};
-  let missingRecipes = 0;
-
-  entries.forEach(([key, qty]) => {
-    const [group, item] = key.split('::');
-    const itemTotal = qty * kitCount;
-    byGroup[group] = (byGroup[group] || 0) + itemTotal;
-
-    const recipe = KIT_RECIPES[item];
-    if (!recipe) {
-      missingRecipes++;
-      return;
-    }
-    Object.entries(recipe).forEach(([mat, amt]) => {
-      resources[mat] = (resources[mat] || 0) + (amt * itemTotal);
-    });
-  });
-
-  summary.innerHTML = `
-    <div class="summary-grid">
-      <div class="stat"><div class="stat-label">Total items</div><div class="stat-val acc">${fmt(totalItems)}</div></div>
-      ${Object.entries(byGroup).map(([g, n]) => `<div class="stat"><div class="stat-label">${g}</div><div class="stat-val">${fmt(n)}</div></div>`).join('')}
-    </div>
-  `;
-
-  const niceNames = {
-    wood:'Wood', stone:'Stone', sulfur:'Sulfur', metal_fragments:'Metal fragments', hq_metal:'HQ metal', cloth:'Cloth', leather:'Leather',
-    low_grade_fuel:'Low grade', gunpowder:'Gunpowder', explosives:'Explosives', pipes:'Pipes', gears:'Gears', tech_trash:'Tech trash',
-    sewing_kit:'Sewing kits', road_sign:'Road signs', tarp:'Tarp', rope:'Rope', beancan_grenade:'Beancan grenades', small_stash:'Small stash',
-    wolf_skull:'Wolf skull', wolf_meat_raw:'Raw wolf meat', bear_meat_raw:'Raw bear meat', venison_raw:'Raw venison', pork_raw:'Raw pork', chicken_raw:'Raw chicken',
-    pipe:'Pipe', smg_body:'SMG body', spring:'Springs', bone_fragments:'Bone fragments', fish_raw:'Raw fish',
-    cocoa:'Cocoa', sugar:'Sugar', oats:'Oats', berries:'Berries', apple_raw:'Apple', pumpkin_raw:'Pumpkin', corn_raw:'Corn',
-    mushroom_raw:'Mushroom', beans_can:'Beans can', tuna_can:'Tuna can', loot_only:'Loot only item'
-  };
-
-  const resLines = Object.entries(resources)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([k, v]) => `<div class="kit-row"><label>${niceNames[k] || k}</label><span>${fmt(v)}</span></div>`)
-    .join('');
-
-  resourceSummary.innerHTML = `
-    <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:8px;">
-      Total for ${fmt(kitCount)} kit${kitCount === 1 ? '' : 's'}
-    </div>
-    ${resLines || '<div class="empty-list" style="padding:0;">No matching recipes yet</div>'}
-    ${missingRecipes ? `<div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text3);">${fmt(missingRecipes)} selected items do not have recipe data yet.</div>` : ''}
-  `;
-}
-
-function validateKitRecipes() {
-  for (let pass = 1; pass <= 5; pass++) {
-    const missing = [];
-    const empty = [];
-    Object.values(KIT_ITEMS).forEach(items => {
-      items.forEach(item => {
-        const recipe = KIT_RECIPES[item];
-        if (!recipe) {
-          missing.push(item);
-          return;
-        }
-        if (!Object.keys(recipe).length) empty.push(item);
-      });
-    });
-    if (!missing.length && !empty.length) {
-      if (pass === 5) console.info('Kit recipe validation: all items covered after 5 passes.');
-      continue;
-    }
-    console.warn(`Kit recipe validation pass ${pass}: missing=${missing.length}, empty=${empty.length}`);
-  }
-}
-
-function setupTabs() {
-  const raidBtn = document.getElementById('tabRaid');
-  const kitBtn = document.getElementById('tabKit');
-  const raidTab = document.getElementById('raidTabContent');
-  const kitTab = document.getElementById('kitTabContent');
-
-  function setTab(tab) {
-    const showRaid = tab === 'raid';
-    raidTab.classList.toggle('hidden', !showRaid);
-    kitTab.classList.toggle('hidden', showRaid);
-    raidBtn.classList.toggle('active', showRaid);
-    kitBtn.classList.toggle('active', !showRaid);
-  }
-
-  raidBtn.addEventListener('click', () => setTab('raid'));
-  kitBtn.addEventListener('click', () => setTab('kit'));
-
-  const kitCountInput = document.getElementById('kitCountInput');
-  kitCountInput.addEventListener('change', e => {
-    kitCount = Math.max(1, parseInt(e.target.value) || 1);
-    e.target.value = kitCount;
-    renderKitSummary();
-  });
-
-  const kitResetBtn = document.getElementById('kitResetBtn');
-  kitResetBtn.addEventListener('click', () => {
-    Object.keys(kitState).forEach(k => { kitState[k] = 0; });
-    kitCount = 1;
-    kitCountInput.value = '1';
-    renderKitPlanner();
-    renderKitSummary();
-  });
-}
-
+removeLegacyKitPlannerUI();
 renderStructList();
 renderAll();
 renderKitPlanner();
